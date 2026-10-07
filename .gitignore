@@ -1,0 +1,10 @@
+node_modules/
+dist/
+release/
+*.log
+.DS_Store
+
+# Real API keys — only .env.example is committed
+.env
+.env.*
+!.env.example

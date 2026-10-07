@@ -1,0 +1,318 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Clock, ExternalLink, ZoomIn, ZoomOut, Contrast, TriangleAlert } from 'lucide-react';
+import { sv, errorMessage } from '../../lib/api';
+import { formatDuration } from '../../lib/format';
+import { FileIcon, IconButton, Spinner } from '../ui.jsx';
+import PdfViewer from './PdfViewer.jsx';
+import HtmlViewer from './HtmlViewer.jsx';
+import SelectionPopup from './SelectionPopup.jsx';
+
+const TICK_MS = 5000;
+const IDLE_AFTER_MS = 2 * 60 * 1000;
+
+/** Counts active study time: window focused, visible, and the user did something in the last 2 minutes. */
+function useStudyTimer(fileId, onTimeTick) {
+  useEffect(() => {
+    let lastActivity = Date.now();
+    let last = Date.now();
+    let pending = 0;
+    const markActive = () => (lastActivity = Date.now());
+    const events = ['mousemove', 'keydown', 'wheel', 'mousedown'];
+    events.forEach((e) => window.addEventListener(e, markActive, { passive: true }));
+
+    const flush = () => {
+      if (pending <= 0) return;
+      sv.progress.tick(fileId, pending);
+      onTimeTick(fileId, pending);
+      pending = 0;
+    };
+    const timer = setInterval(() => {
+      const t = Date.now();
+      const dt = Math.round((t - last) / 1000);
+      last = t;
+      if (document.visibilityState === 'visible' && document.hasFocus() && t - lastActivity < IDLE_AFTER_MS) pending += dt;
+      if (pending >= 15) flush();
+    }, TICK_MS);
+
+    return () => {
+      clearInterval(timer);
+      events.forEach((e) => window.removeEventListener(e, markActive));
+      flush();
+    };
+  }, [fileId, onTimeTick]);
+}
+
+export default function DocumentViewer({ file, jump, onTimeTick, onReadProgress, onAddCard, onAddNote }) {
+  const fileId = file.id;
+  const scrollRef = useRef(null);
+  const [content, setContent] = useState(null);
+  const [error, setError] = useState(null);
+  const [width, setWidth] = useState(900);
+  const [page, setPage] = useState(1);
+  const [pageCount, setPageCount] = useState(0);
+  const [zoom, setZoom] = useState(1);
+  const [dim, setDim] = useState(() => localStorage.getItem('sv.dimPdf') === '1');
+  const [readPct, setReadPct] = useState(file.max_scroll_pct || 0);
+  const [selection, setSelection] = useState(null);
+
+  const ready = useRef(false);
+  const maxPct = useRef(file.max_scroll_pct || 0);
+  const position = useRef(0);
+  const pageRef = useRef(1);
+  const appliedJump = useRef(null);
+  const jumpRef = useRef(jump);
+  jumpRef.current = jump;
+  const persistTimer = useRef(null);
+  const raf = useRef(null);
+
+  useStudyTimer(fileId, onTimeTick);
+
+  useEffect(() => {
+    let alive = true;
+    sv.file
+      .content(fileId)
+      .then((c) => alive && setContent(c))
+      .catch((e) => alive && setError(errorMessage(e)));
+    return () => {
+      alive = false;
+    };
+  }, [fileId]);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    const ro = new ResizeObserver(() => setWidth(el.clientWidth));
+    ro.observe(el);
+    setWidth(el.clientWidth);
+    return () => ro.disconnect();
+  }, []);
+
+  // ---- progress persistence
+  const persist = useCallback(() => {
+    clearTimeout(persistTimer.current);
+    persistTimer.current = null;
+    if (!ready.current) return;
+    sv.progress.scroll(fileId, { pct: maxPct.current, position: position.current });
+  }, [fileId]);
+  useEffect(() => () => persist(), [persist]);
+
+  const handleScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const scrollable = el.scrollHeight - el.clientHeight > 4;
+    const pct = scrollable ? Math.min(1, (el.scrollTop + el.clientHeight) / el.scrollHeight) : 1;
+    position.current = el.scrollHeight ? el.scrollTop / el.scrollHeight : 0;
+
+    const top = el.getBoundingClientRect().top;
+    const probe = el.clientHeight * 0.3;
+    let current = 1;
+    for (const p of el.querySelectorAll('[data-page]')) {
+      if (p.getBoundingClientRect().top - top <= probe) current = Number(p.dataset.page);
+      else break;
+    }
+    pageRef.current = current;
+    setPage(current);
+
+    if (!ready.current) return;
+    if (pct > maxPct.current + 0.004) {
+      maxPct.current = pct;
+      setReadPct(pct);
+      onReadProgress(fileId, pct);
+    }
+    if (!persistTimer.current) persistTimer.current = setTimeout(persist, 1500);
+  }, [fileId, onReadProgress, persist]);
+
+  const onScroll = () => {
+    setSelection(null);
+    if (raf.current) return;
+    raf.current = requestAnimationFrame(() => {
+      raf.current = null;
+      handleScroll();
+    });
+  };
+
+  // ---- navigation
+  const scrollToPage = useCallback((n) => {
+    const el = scrollRef.current;
+    const target = el?.querySelector(`[data-page="${n}"]`);
+    if (!target) return;
+    el.scrollTop = target.getBoundingClientRect().top - el.getBoundingClientRect().top + el.scrollTop - 12;
+  }, []);
+
+  const applyJump = useCallback(
+    (j) => {
+      appliedJump.current = j.nonce;
+      if (j.page) scrollToPage(j.page);
+      if (j.term && content?.kind !== 'pdf') {
+        setTimeout(() => {
+          const el = scrollRef.current;
+          if (!el) return;
+          const scope = (j.page && el.querySelector(`[data-page="${j.page}"]`)) || el;
+          scope.querySelector('mark.sv-hit')?.scrollIntoView({ block: 'center' });
+        }, 60);
+      }
+    },
+    [content, scrollToPage],
+  );
+
+  const handleLayoutReady = useCallback(
+    (count) => {
+      setPageCount(count);
+      requestAnimationFrame(() => {
+        const el = scrollRef.current;
+        if (!el) return;
+        if (!ready.current) {
+          const j = jumpRef.current;
+          if (j && j.fileId === fileId && (j.page || j.term)) applyJump(j);
+          else if (content?.progress?.last_position > 0) el.scrollTop = content.progress.last_position * el.scrollHeight;
+          appliedJump.current = j?.nonce ?? null;
+          ready.current = true;
+        }
+        handleScroll();
+      });
+    },
+    [fileId, content, applyJump, handleScroll],
+  );
+
+  // Later jumps into the already-open file (e.g. another search result).
+  useEffect(() => {
+    if (!ready.current || !jump || jump.fileId !== fileId || appliedJump.current === jump.nonce) return;
+    applyJump(jump);
+  }, [jump, fileId, applyJump]);
+
+  // Keep the current page in view when zooming.
+  useEffect(() => {
+    if (ready.current) requestAnimationFrame(() => scrollToPage(pageRef.current));
+  }, [zoom, scrollToPage]);
+
+  // ---- highlight & extract
+  const onMouseUp = () => {
+    setTimeout(() => {
+      const sel = window.getSelection();
+      const text = sel?.toString().replace(/[ \t]+\n/g, '\n').trim();
+      if (!sel || sel.rangeCount === 0 || !text || text.length < 2) return setSelection(null);
+      const range = sel.getRangeAt(0);
+      if (!scrollRef.current?.contains(range.commonAncestorContainer)) return;
+      const rect = range.getBoundingClientRect();
+      const node = range.startContainer.nodeType === 1 ? range.startContainer : range.startContainer.parentElement;
+      const pageEl = node?.closest('[data-page]');
+      setSelection({
+        text: text.slice(0, 4000),
+        page: pageEl ? Number(pageEl.dataset.page) : null,
+        x: rect.left + rect.width / 2,
+        top: rect.top,
+        bottom: rect.bottom,
+      });
+    }, 0);
+  };
+
+  useEffect(() => {
+    if (!selection) return;
+    const onKey = (e) => e.key === 'Escape' && setSelection(null);
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [selection]);
+
+  const finishSelection = (action) => {
+    action({ text: selection.text, page: selection.page });
+    window.getSelection()?.removeAllRanges();
+    setSelection(null);
+  };
+
+  const isPdf = content?.kind === 'pdf';
+  const term = jump && jump.fileId === fileId ? jump.term : null;
+  const folder = file.rel_path.includes('/') ? file.rel_path.slice(0, file.rel_path.lastIndexOf('/')) : '';
+  const unit = file.ext === 'pptx' ? 'Slide' : 'Page';
+  const noText = content && (file.parse_error || file.char_count === 0);
+
+  return (
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="flex h-11 shrink-0 items-center gap-3 border-b border-line px-4">
+        <FileIcon ext={file.ext} size={16} />
+        <div className="flex min-w-0 flex-1 items-baseline gap-2">
+          <span className="truncate text-sm font-medium">{file.name}</span>
+          {folder && <span className="hidden truncate text-xs text-faint lg:inline">{folder}</span>}
+        </div>
+
+        {pageCount > 1 && (
+          <span className="text-xs tabular-nums text-muted">
+            {unit} {page} / {pageCount}
+          </span>
+        )}
+        {isPdf && (
+          <div className="flex items-center">
+            <IconButton title="Zoom out" onClick={() => setZoom((z) => Math.max(0.5, +(z - 0.1).toFixed(2)))}>
+              <ZoomOut size={15} />
+            </IconButton>
+            <button className="w-10 text-center text-xs tabular-nums text-muted hover:text-text" onClick={() => setZoom(1)} title="Reset zoom">
+              {Math.round(zoom * 100)}%
+            </button>
+            <IconButton title="Zoom in" onClick={() => setZoom((z) => Math.min(2.5, +(z + 0.1).toFixed(2)))}>
+              <ZoomIn size={15} />
+            </IconButton>
+            <IconButton
+              title="Dim pages (night reading)"
+              active={dim}
+              onClick={() =>
+                setDim((d) => {
+                  try {
+                    localStorage.setItem('sv.dimPdf', d ? '0' : '1');
+                  } catch {}
+                  return !d;
+                })
+              }
+            >
+              <Contrast size={15} />
+            </IconButton>
+          </div>
+        )}
+        <span className="flex items-center gap-1 text-xs tabular-nums text-muted" title="Time spent on this file">
+          <Clock size={13} /> {formatDuration(file.seconds_spent)}
+        </span>
+        <span className="w-16 text-right text-xs tabular-nums text-muted" title="How much of the document you've scrolled through">
+          {Math.round(readPct * 100)}% read
+        </span>
+        <IconButton title="Open in default app" onClick={() => sv.file.openExternal(fileId)}>
+          <ExternalLink size={15} />
+        </IconButton>
+      </div>
+      <div className="h-0.5 shrink-0 bg-line/40">
+        <div className="h-full bg-accent transition-[width] duration-300" style={{ width: `${readPct * 100}%` }} />
+      </div>
+
+      {noText && (
+        <div className="flex shrink-0 items-center gap-2 border-b border-line bg-warning/10 px-4 py-1.5 text-xs text-warning">
+          <TriangleAlert size={13} />
+          {file.parse_error
+            ? `Couldn't extract text: ${file.parse_error}`
+            : 'No selectable text found (scanned document?). Search and AI tools won’t work for this file.'}
+        </div>
+      )}
+
+      <div
+        ref={scrollRef}
+        onScroll={onScroll}
+        onMouseUp={onMouseUp}
+        onMouseDown={() => setSelection(null)}
+        className="relative min-h-0 flex-1 overflow-y-auto"
+      >
+        {error ? (
+          <div className="grid h-full place-items-center text-sm text-danger">{error}</div>
+        ) : !content ? (
+          <div className="grid h-full place-items-center text-muted">
+            <Spinner size={20} />
+          </div>
+        ) : isPdf ? (
+          <div className="py-6">
+            <PdfViewer fileId={fileId} width={width} zoom={zoom} dim={dim} term={term} scrollRef={scrollRef} onLayoutReady={handleLayoutReady} />
+          </div>
+        ) : (
+          <HtmlViewer kind={content.kind} ext={file.ext} html={content.html} text={content.text} term={term} onLayoutReady={handleLayoutReady} />
+        )}
+      </div>
+
+      {selection && (
+        <SelectionPopup selection={selection} onCard={() => finishSelection(onAddCard)} onNote={() => finishSelection(onAddNote)} />
+      )}
+    </div>
+  );
+}

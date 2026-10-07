@@ -1,0 +1,175 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Dark is the default theme. Values are RGB triplets for Tailwind's alpha syntax. */
+:root {
+  --bg: 17 17 19;
+  --panel: 22 22 25;
+  --elevated: 30 30 34;
+  --hover: 38 38 43;
+  --border: 42 42 48;
+  --text: 228 228 231;
+  --muted: 156 156 166;
+  --faint: 108 108 118;
+  --accent: 139 124 246;
+  --success: 74 222 128;
+  --danger: 248 113 113;
+  --warning: 251 191 36;
+  color-scheme: dark;
+}
+
+[data-theme='light'] {
+  --bg: 255 255 255;
+  --panel: 248 248 246;
+  --elevated: 255 255 255;
+  --hover: 237 237 234;
+  --border: 228 228 224;
+  --text: 38 38 36;
+  --muted: 105 105 100;
+  --faint: 150 150 145;
+  --accent: 109 91 238;
+  --success: 22 163 74;
+  --danger: 220 38 38;
+  --warning: 202 138 4;
+  color-scheme: light;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply bg-bg text-text antialiased;
+  font-feature-settings: 'cv11', 'ss01';
+  overflow: hidden;
+}
+
+::selection {
+  background: rgb(var(--accent) / 0.3);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--border)) transparent;
+}
+
+kbd {
+  @apply rounded border border-line bg-hover px-1 py-px font-sans text-[10px] text-muted;
+}
+
+/* ---------------------------------------------------------------- prose */
+.sv-prose {
+  --tw-prose-body: rgb(var(--text) / 0.88);
+  --tw-prose-headings: rgb(var(--text));
+  --tw-prose-lead: rgb(var(--muted));
+  --tw-prose-links: rgb(var(--accent));
+  --tw-prose-bold: rgb(var(--text));
+  --tw-prose-counters: rgb(var(--muted));
+  --tw-prose-bullets: rgb(var(--faint));
+  --tw-prose-hr: rgb(var(--border));
+  --tw-prose-quotes: rgb(var(--text) / 0.85);
+  --tw-prose-quote-borders: rgb(var(--accent) / 0.6);
+  --tw-prose-captions: rgb(var(--muted));
+  --tw-prose-code: rgb(var(--text));
+  --tw-prose-pre-code: rgb(var(--text));
+  --tw-prose-pre-bg: rgb(var(--elevated));
+  --tw-prose-th-borders: rgb(var(--border));
+  --tw-prose-td-borders: rgb(var(--border));
+}
+
+.sv-prose blockquote p:first-of-type::before,
+.sv-prose blockquote p:last-of-type::after {
+  content: none;
+}
+
+.sv-prose mark,
+.ProseMirror mark {
+  background: rgb(var(--warning) / 0.3);
+  color: inherit;
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
+/* -------------------------------------------------------- slides (pptx) */
+.sv-slide {
+  border: 1px solid rgb(var(--border));
+  border-radius: 14px;
+  padding: 28px 36px 24px;
+  margin: 0 0 24px;
+  background: rgb(var(--panel));
+}
+.sv-slide-num {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgb(var(--faint));
+}
+.sv-slide h2 {
+  margin-top: 0.4em;
+}
+.sv-slide .sv-subtitle {
+  color: rgb(var(--muted));
+  margin-top: -0.4em;
+}
+.sv-slide li.lvl-1 { margin-left: 1.5em; }
+.sv-slide li.lvl-2 { margin-left: 3em; }
+.sv-slide li.lvl-3,
+.sv-slide li.lvl-4 { margin-left: 4.5em; }
+.sv-notes {
+  margin-top: 18px;
+  padding-top: 12px;
+  border-top: 1px dashed rgb(var(--border));
+  font-size: 0.9em;
+  color: rgb(var(--muted));
+}
+.sv-notes-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgb(var(--faint));
+}
+
+/* ------------------------------------------------------- search hits */
+mark.sv-hit {
+  background: rgb(var(--warning) / 0.35);
+  color: inherit;
+  border-radius: 2px;
+}
+
+/* ------------------------------------------------------------- pdf */
+.react-pdf__Page__textContent mark {
+  background: rgba(250, 204, 21, 0.45);
+  color: transparent;
+  border-radius: 2px;
+}
+.sv-dim .react-pdf__Page__canvas {
+  filter: invert(0.88) hue-rotate(180deg);
+}
+
+/* ---------------------------------------------------------- tiptap */
+.ProseMirror {
+  min-height: 100%;
+}
+.ProseMirror:focus {
+  outline: none;
+}
+.ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+  color: rgb(var(--faint));
+}
+
+@keyframes sv-pop {
+  from { opacity: 0; transform: translateY(4px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+.sv-pop {
+  animation: sv-pop 120ms ease-out;
+}
