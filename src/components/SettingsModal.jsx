@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { FolderSearch } from 'lucide-react';
+import { FolderSearch, FilePlus2 } from 'lucide-react';
 import { sv, errorMessage } from '../lib/api';
 import { Button, Modal } from './ui.jsx';
 
-export default function SettingsModal({ settings, onClose, onSaved, onChangeFolder }) {
+export default function SettingsModal({ settings, onClose, onSaved, onChangeFolder, mobile = false }) {
   const [theme, setTheme] = useState(settings.theme || 'dark');
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -25,15 +25,21 @@ export default function SettingsModal({ settings, onClose, onSaved, onChangeFold
     <Modal title="Settings" onClose={onClose}>
       <div className="space-y-6">
         <section>
-          <div className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-faint">Study folder</div>
-          <div className="flex items-center gap-2">
-            <div className="min-w-0 flex-1 truncate rounded-md border border-line bg-bg px-3 py-2 text-sm text-muted" title={settings.rootFolder}>
-              {settings.rootFolder}
-            </div>
-            <Button onClick={onChangeFolder}>
-              <FolderSearch size={14} /> Change
+          <div className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-faint">{mobile ? 'Library' : 'Study folder'}</div>
+          {mobile ? (
+            <Button onClick={onChangeFolder} className="w-full">
+              <FilePlus2 size={14} /> Import more files
             </Button>
-          </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <div className="min-w-0 flex-1 truncate rounded-md border border-line bg-bg px-3 py-2 text-sm text-muted" title={settings.rootFolder}>
+                {settings.rootFolder}
+              </div>
+              <Button onClick={onChangeFolder}>
+                <FolderSearch size={14} /> Change
+              </Button>
+            </div>
+          )}
         </section>
 
         <section>

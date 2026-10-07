@@ -100,7 +100,9 @@ export default function PdfViewer({ fileId, width, zoom, dim, term, scrollRef, o
       </div>
     );
 
-  const pageWidth = Math.round(Math.max(320, Math.min(width - 64, 960) * zoom));
+  // Phones: use nearly the full width; desktop: comfortable margins.
+  const margin = width < 640 ? 16 : 64;
+  const pageWidth = Math.round(Math.max(240, Math.min(width - margin, 960) * zoom));
 
   return (
     <Document

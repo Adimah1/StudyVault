@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Clock, ExternalLink, ZoomIn, ZoomOut, Contrast, TriangleAlert } from 'lucide-react';
+import { Clock, ExternalLink, ZoomIn, ZoomOut, Contrast, TriangleAlert, Trash2 } from 'lucide-react';
 import { sv, errorMessage } from '../../lib/api';
 import { formatDuration } from '../../lib/format';
 import { FileIcon, IconButton, Spinner } from '../ui.jsx';
@@ -42,7 +42,7 @@ function useStudyTimer(fileId, onTimeTick) {
   }, [fileId, onTimeTick]);
 }
 
-export default function DocumentViewer({ file, jump, onTimeTick, onReadProgress, onAddCard, onAddNote }) {
+export default function DocumentViewer({ file, jump, onTimeTick, onReadProgress, onAddCard, onAddNote, onRemove = null, narrow = false }) {
   const fileId = file.id;
   const scrollRef = useRef(null);
   const [content, setContent] = useState(null);
@@ -185,25 +185,40 @@ export default function DocumentViewer({ file, jump, onTimeTick, onReadProgress,
   }, [zoom, scrollToPage]);
 
   // ---- highlight & extract
-  const onMouseUp = () => {
-    setTimeout(() => {
-      const sel = window.getSelection();
-      const text = sel?.toString().replace(/[ \t]+\n/g, '\n').trim();
-      if (!sel || sel.rangeCount === 0 || !text || text.length < 2) return setSelection(null);
-      const range = sel.getRangeAt(0);
-      if (!scrollRef.current?.contains(range.commonAncestorContainer)) return;
-      const rect = range.getBoundingClientRect();
-      const node = range.startContainer.nodeType === 1 ? range.startContainer : range.startContainer.parentElement;
-      const pageEl = node?.closest('[data-page]');
-      setSelection({
-        text: text.slice(0, 4000),
-        page: pageEl ? Number(pageEl.dataset.page) : null,
-        x: rect.left + rect.width / 2,
-        top: rect.top,
-        bottom: rect.bottom,
-      });
-    }, 0);
-  };
+  const captureSelection = useCallback(() => {
+    const sel = window.getSelection();
+    const text = sel?.toString().replace(/[ \t]+\n/g, '\n').trim();
+    if (!sel || sel.rangeCount === 0 || !text || text.length < 2) return setSelection(null);
+    const range = sel.getRangeAt(0);
+    if (!scrollRef.current?.contains(range.commonAncestorContainer)) return;
+    const rect = range.getBoundingClientRect();
+    const node = range.startContainer.nodeType === 1 ? range.startContainer : range.startContainer.parentElement;
+    const pageEl = node?.closest('[data-page]');
+    setSelection({
+      text: text.slice(0, 4000),
+      page: pageEl ? Number(pageEl.dataset.page) : null,
+      x: rect.left + rect.width / 2,
+      top: rect.top,
+      bottom: rect.bottom,
+    });
+  }, []);
+
+  const onMouseUp = () => setTimeout(captureSelection, 0);
+
+  // Touch screens: long-press selection fires no mouseup, so follow the selection itself.
+  useEffect(() => {
+    if (!window.matchMedia('(pointer: coarse)').matches) return;
+    let timer;
+    const onChange = () => {
+      clearTimeout(timer);
+      timer = setTimeout(captureSelection, 350);
+    };
+    document.addEventListener('selectionchange', onChange);
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('selectionchange', onChange);
+    };
+  }, [captureSelection]);
 
   useEffect(() => {
     if (!selection) return;
@@ -226,7 +241,7 @@ export default function DocumentViewer({ file, jump, onTimeTick, onReadProgress,
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex h-11 shrink-0 items-center gap-3 border-b border-line px-4">
+      <div className={`flex h-11 shrink-0 items-center border-b border-line ${narrow ? 'gap-1 px-2' : 'gap-3 px-4'}`}>
         <FileIcon ext={file.ext} size={16} />
         <div className="flex min-w-0 flex-1 items-baseline gap-2">
           <span className="truncate text-sm font-medium">{file.name}</span>
@@ -235,7 +250,8 @@ export default function DocumentViewer({ file, jump, onTimeTick, onReadProgress,
 
         {pageCount > 1 && (
           <span className="text-xs tabular-nums text-muted">
-            {unit} {page} / {pageCount}
+            {narrow ? '' : `${unit} `}
+            {page} / {pageCount}
           </span>
         )}
         {isPdf && (
@@ -243,9 +259,11 @@ export default function DocumentViewer({ file, jump, onTimeTick, onReadProgress,
             <IconButton title="Zoom out" onClick={() => setZoom((z) => Math.max(0.5, +(z - 0.1).toFixed(2)))}>
               <ZoomOut size={15} />
             </IconButton>
-            <button className="w-10 text-center text-xs tabular-nums text-muted hover:text-text" onClick={() => setZoom(1)} title="Reset zoom">
-              {Math.round(zoom * 100)}%
-            </button>
+            {!narrow && (
+              <button className="w-10 text-center text-xs tabular-nums text-muted hover:text-text" onClick={() => setZoom(1)} title="Reset zoom">
+                {Math.round(zoom * 100)}%
+              </button>
+            )}
             <IconButton title="Zoom in" onClick={() => setZoom((z) => Math.min(2.5, +(z + 0.1).toFixed(2)))}>
               <ZoomIn size={15} />
             </IconButton>
@@ -265,15 +283,23 @@ export default function DocumentViewer({ file, jump, onTimeTick, onReadProgress,
             </IconButton>
           </div>
         )}
-        <span className="flex items-center gap-1 text-xs tabular-nums text-muted" title="Time spent on this file">
-          <Clock size={13} /> {formatDuration(file.seconds_spent)}
+        {!narrow && (
+          <span className="flex items-center gap-1 text-xs tabular-nums text-muted" title="Time spent on this file">
+            <Clock size={13} /> {formatDuration(file.seconds_spent)}
+          </span>
+        )}
+        <span className={`${narrow ? '' : 'w-16'} text-right text-xs tabular-nums text-muted`} title="How much of the document you've scrolled through">
+          {Math.round(readPct * 100)}%{narrow ? '' : ' read'}
         </span>
-        <span className="w-16 text-right text-xs tabular-nums text-muted" title="How much of the document you've scrolled through">
-          {Math.round(readPct * 100)}% read
-        </span>
-        <IconButton title="Open in default app" onClick={() => sv.file.openExternal(fileId)}>
-          <ExternalLink size={15} />
-        </IconButton>
+        {onRemove ? (
+          <IconButton title="Remove from library" onClick={onRemove}>
+            <Trash2 size={15} />
+          </IconButton>
+        ) : (
+          <IconButton title="Open in default app" onClick={() => sv.file.openExternal(fileId)}>
+            <ExternalLink size={15} />
+          </IconButton>
+        )}
       </div>
       <div className="h-0.5 shrink-0 bg-line/40">
         <div className="h-full bg-accent transition-[width] duration-300" style={{ width: `${readPct * 100}%` }} />

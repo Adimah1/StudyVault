@@ -1,0 +1,8 @@
+{
+  "appId": "com.studyvault.app",
+  "appName": "StudyVault",
+  "webDir": "dist-mobile",
+  "android": {
+    "backgroundColor": "#111113"
+  }
+}

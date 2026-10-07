@@ -1,11 +1,15 @@
 # StudyVault
 
-A desktop app (Windows / macOS / Linux) that turns a local folder of PDFs, PowerPoints, Word documents and text files into an interactive study environment. Files are **read in place** and never moved or modified.
+A study app for **Windows / macOS / Linux and Android** that turns your PDFs, PowerPoints, Word documents and text files
+into an interactive study environment. On desktop, files are **read in place** and never moved or modified; on Android
+you import them into the app.
 
 ## Download
 
-**Windows (64-bit):** get `StudyVault-Setup-0.1.0.exe` from the [latest release](https://github.com/Adimah1/StudyVault/releases/latest).
-If Windows shows "Windows protected your PC", click **More info → Run anyway** (the installer isn't code-signed yet).
+From the [latest release](https://github.com/Adimah1/StudyVault/releases/latest):
+
+- **Windows (64-bit):** `StudyVault-Setup-<version>.exe`. If Windows shows "Windows protected your PC", click **More info → Run anyway** (the installer isn't code-signed yet).
+- **Android 7+:** `StudyVault-<version>.apk`. Open it on your phone and allow "Install unknown apps" for your browser/files app when asked.
 
 ## Getting started (developers)
 
@@ -26,6 +30,30 @@ Other scripts:
 
 > `better-sqlite3` is a native module. Prebuilt binaries are downloaded for most platforms; if your platform has none,
 > `npm install` compiles it, which needs a C++ toolchain (Windows: "Desktop development with C++" from Visual Studio Build Tools).
+
+## Android app
+
+The same React UI runs on Android through [Capacitor](https://capacitorjs.com). The UI only talks to `window.sv`;
+on desktop that's Electron's preload bridge, on mobile it's `src/mobile/backend.js`:
+
+| Concern     | Desktop (Electron)                      | Android (Capacitor)                                  |
+| ----------- | --------------------------------------- | ---------------------------------------------------- |
+| Files       | Scans a folder, reads files in place    | Files are imported (copied) into the app             |
+| Storage     | SQLite (`better-sqlite3`)               | IndexedDB (`src/mobile/idb.js`)                      |
+| Search      | SQLite FTS5                             | MiniSearch (`src/mobile/search.js`)                  |
+| AI key      | `.env` read by the main process         | `.env` baked into the bundle at build time           |
+
+Shared logic lives in `shared/` (spaced repetition, PPTX/PDF parsing, Gemini prompts/retries) and is used by both.
+
+Requirements: JDK 21 and the Android SDK (platform 36, build-tools 35). Then:
+
+```bash
+npm run mobile:dev     # try the mobile UI in a browser (phone-size window)
+npm run mobile:apk     # build → android/app/build/outputs/apk/debug/app-debug.apk
+```
+
+Phone layout: the library is a drawer (☰), study tools open full screen (🔧), long-press text to select it, then tap
+**Flashcard** or **Note**. The hidden developer panel opens by tapping the StudyVault logo 5 times.
 
 ## AI (Google Gemini) and the bundled key
 
@@ -82,11 +110,16 @@ electron/
   db.js            Opens SQLite (better-sqlite3), applies schema.sql
   schema.sql       Database schema
   scanner.js       Recursive folder scan + incremental indexing
-  srs.js           Spaced-repetition scheduler
-  services/aiService.js  Gemini calls (summary, quiz, key terms, card-from-highlight), key resolution, error mapping
-  parsers/         pdf (pdfjs-dist), docx (mammoth), pptx (JSZip + OOXML), txt
+  services/aiService.js  Desktop key handling (.env / developer override) on top of shared/ai-core.mjs
+  parsers/         pdf, docx (mammoth), pptx, txt (pdf/pptx delegate to shared/)
+shared/            Used by desktop and Android
+  srs.mjs          Spaced-repetition scheduler
+  ai-core.mjs      Gemini prompts, retries, model fallback, friendly errors
+  pptx.mjs         PowerPoint parser (JSZip + OOXML)
+  pdf-text.mjs     Per-page PDF text extraction (pdf.js)
 src/
-  App.jsx          Layout + top-level state
+  App.jsx          Layout + top-level state (three columns on desktop, drawer + sheets on phones)
+  mobile/          Android backend: backend.js (window.sv), idb.js, search.js, parsers.js
   components/
     TopBar.jsx, SearchBox.jsx, Home.jsx, Welcome.jsx, SettingsModal.jsx, ui.jsx
     sidebar/Sidebar.jsx            File tree

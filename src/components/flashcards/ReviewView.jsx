@@ -29,7 +29,7 @@ function Segmented({ value, onChange, options }) {
   );
 }
 
-export default function ReviewView({ activeFile, onOpenFile, onChanged }) {
+export default function ReviewView({ activeFile, onOpenFile, onChanged, narrow = false }) {
   const [scope, setScope] = useState(activeFile ? 'file' : 'all');
   const [mode, setMode] = useState('review');
   const fileId = scope === 'file' && activeFile ? activeFile.id : null;
@@ -104,19 +104,19 @@ export default function ReviewView({ activeFile, onOpenFile, onChanged }) {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex h-11 shrink-0 items-center gap-3 border-b border-line px-4">
-        <Layers size={16} className="text-accent" />
-        <span className="text-sm font-medium">Flashcards</span>
+      <div className={`flex h-11 shrink-0 items-center border-b border-line ${narrow ? 'gap-2 px-2' : 'gap-3 px-4'}`}>
+        {!narrow && <Layers size={16} className="text-accent" />}
+        {!narrow && <span className="text-sm font-medium">Flashcards</span>}
         <Segmented
           value={scope}
           onChange={setScope}
           options={[
-            { value: 'all', label: 'All cards' },
-            { value: 'file', label: 'This document', disabled: !activeFile },
+            { value: 'all', label: narrow ? 'All' : 'All cards' },
+            { value: 'file', label: narrow ? 'This doc' : 'This document', disabled: !activeFile },
           ]}
         />
         <div className="flex-1" />
-        {stats && (
+        {stats && !narrow && (
           <div className="flex gap-4 text-xs text-muted">
             <span>
               <b className="text-text">{stats.due}</b> due
@@ -145,7 +145,7 @@ export default function ReviewView({ activeFile, onOpenFile, onChanged }) {
       {mode === 'manage' ? (
         <CardManager fileId={fileId} onChanged={onChanged} onOpenFile={onOpenFile} />
       ) : (
-        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-10">
+        <div className="min-h-0 flex-1 overflow-y-auto px-3 py-5 sm:px-6 sm:py-10">
           {queue === null ? (
             <div className="grid place-items-center py-20 text-muted">
               <Spinner size={20} />
@@ -165,9 +165,9 @@ export default function ReviewView({ activeFile, onOpenFile, onChanged }) {
                 )}
               </div>
 
-              <div className="flex min-h-[300px] flex-col rounded-2xl border border-line bg-panel p-8 shadow-sm">
+              <div className="flex min-h-[260px] flex-col rounded-2xl border border-line bg-panel p-5 shadow-sm sm:min-h-[300px] sm:p-8">
                 <div className="text-[11px] font-semibold uppercase tracking-wider text-faint">Question</div>
-                <div className="mt-3 whitespace-pre-wrap text-xl leading-relaxed">{current.front}</div>
+                <div className="mt-3 whitespace-pre-wrap text-lg leading-relaxed sm:text-xl">{current.front}</div>
                 {revealed && (
                   <>
                     <div className="my-6 h-px bg-line" />

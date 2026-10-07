@@ -1,8 +1,8 @@
-import { Clock, Files, Layers, BookOpenCheck } from 'lucide-react';
+import { Clock, Files, Layers, BookOpenCheck, FilePlus2 } from 'lucide-react';
 import { Button, FileIcon, ProgressBar } from './ui.jsx';
 import { formatDuration } from '../lib/format';
 
-export default function Home({ files, dueCount, onOpen, onReview }) {
+export default function Home({ files, dueCount, onOpen, onReview, onImport = null }) {
   const totalSeconds = files.reduce((n, f) => n + f.seconds_spent, 0);
   const started = files.filter((f) => f.max_scroll_pct > 0).length;
   const completed = files.filter((f) => f.max_scroll_pct >= 0.98).length;
@@ -20,9 +20,18 @@ export default function Home({ files, dueCount, onOpen, onReview }) {
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="mx-auto max-w-3xl px-8 py-12">
+      <div className="mx-auto max-w-3xl px-4 py-6 sm:px-8 sm:py-12">
         <h1 className="text-2xl font-semibold tracking-tight">Ready to study?</h1>
-        <p className="mt-1 text-sm text-muted">Pick a file from the library, search with Ctrl K, or review your flashcards.</p>
+        <p className="mt-1 text-sm text-muted">
+          {onImport
+            ? 'Open a file from the library (☰), search, or review your flashcards.'
+            : 'Pick a file from the library, search with Ctrl K, or review your flashcards.'}
+        </p>
+        {onImport && (
+          <Button variant="primary" className="mt-4 h-10 w-full sm:w-auto" onClick={onImport}>
+            <FilePlus2 size={15} /> Import study files
+          </Button>
+        )}
 
         <div className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-4">
           {stats.map(([Icon, label, value]) => (

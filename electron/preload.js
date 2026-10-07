@@ -7,6 +7,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 const invoke = (channel, ...args) => ipcRenderer.invoke(channel, ...args);
 
 contextBridge.exposeInMainWorld('sv', {
+  platform: 'desktop',
   settings: {
     get: () => invoke('settings:get'),
     set: (patch) => invoke('settings:set', patch),

@@ -7,7 +7,9 @@ const fsp = require('fs/promises');
 const { openDatabase } = require('./db');
 const { scanLibrary, indexFile } = require('./scanner');
 const aiService = require('./services/aiService');
-const { schedule } = require('./srs');
+
+// Spaced-repetition scheduler (shared/srs.mjs, also used by mobile); loaded before IPC is registered.
+let schedule = null;
 
 const DEV_URL = process.env.VITE_DEV_SERVER_URL;
 const DIST_DIR = path.join(__dirname, '..', 'dist');
@@ -504,7 +506,8 @@ if (!app.requestSingleInstanceLock()) {
     mainWindow.focus();
   });
 
-  app.whenReady().then(() => {
+  app.whenReady().then(async () => {
+    ({ schedule } = await import('../shared/srs.mjs'));
     db = openDatabase(path.join(app.getPath('userData'), 'studyvault.db'));
     // Remove settings left over from the OpenAI version.
     db.prepare("DELETE FROM settings WHERE key IN ('openaiApiKey', 'openaiModel')").run();

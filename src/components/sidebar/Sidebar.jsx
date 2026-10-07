@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ChevronRight, Folder, FolderOpen, FolderSearch, RefreshCw, TriangleAlert, Filter } from 'lucide-react';
+import { ChevronRight, Folder, FolderOpen, FolderSearch, RefreshCw, TriangleAlert, Filter, FilePlus2 } from 'lucide-react';
 import { FileIcon, IconButton, ProgressBar } from '../ui.jsx';
 import { formatDuration } from '../../lib/format';
 
@@ -28,7 +28,7 @@ function loadCollapsed() {
   }
 }
 
-export default function Sidebar({ root, files, activeId, onOpen, scan, onRescan, onChangeFolder }) {
+export default function Sidebar({ root, files, activeId, onOpen, scan, onRescan, onChangeFolder, mobile = false, narrow = false }) {
   const [filter, setFilter] = useState('');
   const [collapsed, setCollapsed] = useState(loadCollapsed);
 
@@ -51,7 +51,7 @@ export default function Sidebar({ root, files, activeId, onOpen, scan, onRescan,
   const ctx = { activeId, onOpen, collapsed: filter ? new Set() : collapsed, toggle };
 
   return (
-    <aside className="flex w-72 shrink-0 flex-col border-r border-line bg-panel">
+    <aside className={`flex shrink-0 flex-col border-r border-line bg-panel ${narrow ? 'h-full w-full' : 'w-72'}`}>
       <div className="flex items-center gap-1 px-3 pb-2 pt-3">
         <div className="min-w-0 flex-1">
           <div className="text-[11px] font-semibold uppercase tracking-wider text-faint">Library</div>
@@ -59,12 +59,20 @@ export default function Sidebar({ root, files, activeId, onOpen, scan, onRescan,
             {rootName}
           </div>
         </div>
-        <IconButton title="Rescan folder" onClick={onRescan} disabled={scan.running}>
-          <RefreshCw size={15} className={scan.running ? 'animate-spin' : ''} />
-        </IconButton>
-        <IconButton title="Change study folder" onClick={onChangeFolder}>
-          <FolderSearch size={15} />
-        </IconButton>
+        {mobile ? (
+          <IconButton title="Import files" onClick={onChangeFolder} disabled={scan.running} className="text-accent">
+            <FilePlus2 size={17} />
+          </IconButton>
+        ) : (
+          <>
+            <IconButton title="Rescan folder" onClick={onRescan} disabled={scan.running}>
+              <RefreshCw size={15} className={scan.running ? 'animate-spin' : ''} />
+            </IconButton>
+            <IconButton title="Change study folder" onClick={onChangeFolder}>
+              <FolderSearch size={15} />
+            </IconButton>
+          </>
+        )}
       </div>
 
       {scan.running && (
@@ -97,7 +105,7 @@ export default function Sidebar({ root, files, activeId, onOpen, scan, onRescan,
       <nav className="min-h-0 flex-1 overflow-y-auto px-1.5 pb-3">
         {files.length === 0 && !scan.running && (
           <div className="px-3 py-8 text-center text-xs leading-5 text-muted">
-            No PDF, PPTX, DOCX or TXT files found in this folder.
+            {mobile ? 'No files yet. Tap the + button to import PDFs, slides or documents.' : 'No PDF, PPTX, DOCX or TXT files found in this folder.'}
           </div>
         )}
         <Children node={tree} depth={0} ctx={ctx} />

@@ -1,6 +1,4 @@
-'use strict';
-
-// Simplified SM-2 spaced repetition.
+// Simplified SM-2 spaced repetition, shared by the desktop (Electron) and mobile apps.
 //   grade 0 = Again, 1 = Hard, 2 = Good, 3 = Easy
 // Wrong answers reset the card and bring it back in a minute. Cards with a
 // history of lapses also get shorter intervals afterwards, so cards you
@@ -9,7 +7,7 @@
 const MINUTE = 60 * 1000;
 const DAY = 24 * 60 * MINUTE;
 
-function schedule(card, grade, now = Date.now()) {
+export function schedule(card, grade, now = Date.now()) {
   let ease = card.ease ?? 2.5;
   let interval = card.interval_days ?? 0;
   const reps = card.repetitions ?? 0;
@@ -47,4 +45,7 @@ function schedule(card, grade, now = Date.now()) {
   };
 }
 
-module.exports = { schedule };
+/** Next-due interval (ms) for each grade, used to label the review buttons. */
+export function previews(card, now = Date.now()) {
+  return [0, 1, 2, 3].map((g) => schedule(card, g, now).due_at - now);
+}

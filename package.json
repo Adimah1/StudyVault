@@ -13,7 +13,10 @@
     "start": "electron .",
     "predist": "node scripts/check-env.js",
     "dist": "vite build && electron-builder",
-    "postinstall": "electron-builder install-app-deps"
+    "postinstall": "electron-builder install-app-deps",
+    "mobile:dev": "vite --mode mobile",
+    "mobile:sync": "vite build --mode mobile && cap sync android",
+    "mobile:apk": "npm run mobile:sync && cd android && gradlew.bat assembleDebug"
   },
   "dependencies": {
     "@google/genai": "^2.27.0",
@@ -25,6 +28,10 @@
     "pdfjs-dist": "4.8.69"
   },
   "devDependencies": {
+    "@capacitor/android": "^8.5.3",
+    "@capacitor/app": "^8.1.2",
+    "@capacitor/cli": "^8.5.3",
+    "@capacitor/core": "^8.5.3",
     "@tailwindcss/typography": "^0.5.15",
     "@tiptap/extension-highlight": "^2.10.3",
     "@tiptap/extension-placeholder": "^2.10.3",
@@ -40,6 +47,7 @@
     "electron-builder": "^25.1.8",
     "lucide-react": "^0.468.0",
     "marked": "^15.0.4",
+    "minisearch": "^7.2.0",
     "postcss": "^8.4.49",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
@@ -58,6 +66,7 @@
     "files": [
       "dist/**/*",
       "electron/**/*",
+      "shared/**/*",
       "package.json"
     ],
     "asarUnpack": [

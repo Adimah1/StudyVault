@@ -1,5 +1,8 @@
-// Thin access point for the preload bridge (see electron/preload.js).
-export const sv = window.sv;
+// Access point for the app backend: electron/preload.js on desktop, src/mobile/backend.js on mobile.
+// A proxy so modules can import `sv` before the mobile backend has been installed on window.
+export const sv = new Proxy({}, { get: (_, key) => window.sv?.[key] });
+
+export const isMobile = () => window.sv?.platform === 'mobile';
 
 /** Strip Electron's "Error invoking remote method ..." prefix from IPC errors. */
 export function errorMessage(err) {

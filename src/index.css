@@ -47,6 +47,28 @@ body {
   overflow: hidden;
 }
 
+/* ---------------------------------------------------------- mobile */
+/* Keep content clear of the status / navigation bars (Capacitor sets --safe-area-inset-*). */
+[data-platform='mobile'] {
+  --sv-safe-top: max(env(safe-area-inset-top, 0px), var(--safe-area-inset-top, 0px));
+  --sv-safe-bottom: max(env(safe-area-inset-bottom, 0px), var(--safe-area-inset-bottom, 0px));
+}
+[data-platform='mobile'] #root {
+  padding-top: var(--sv-safe-top);
+  padding-bottom: var(--sv-safe-bottom);
+  box-sizing: border-box;
+}
+[data-platform='mobile'] body {
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+/* Comfortable touch targets in the file tree. */
+@media (pointer: coarse) {
+  nav button {
+    min-height: 40px;
+  }
+}
+
 ::selection {
   background: rgb(var(--accent) / 0.3);
 }

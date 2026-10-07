@@ -22,7 +22,7 @@ function Snippet({ text }) {
   );
 }
 
-export default function SearchBox({ onSelect }) {
+export default function SearchBox({ onSelect, compact = false }) {
   const [q, setQ] = useState('');
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -107,17 +107,20 @@ export default function SearchBox({ onSelect }) {
           onFocus={() => setOpen(true)}
           onBlur={() => setOpen(false)}
           onKeyDown={onKeyDown}
-          placeholder="Search all study materials…"
+          placeholder={compact ? 'Search…' : 'Search all study materials…'}
+          enterKeyHint="search"
           className="min-w-0 flex-1 bg-transparent text-text placeholder:text-faint focus:outline-none"
         />
-        {loading ? <Spinner size={13} className="text-faint" /> : <kbd>Ctrl K</kbd>}
+        {loading ? <Spinner size={13} className="text-faint" /> : !compact && <kbd>Ctrl K</kbd>}
       </div>
 
       {showDropdown && (
         <div
           ref={listRef}
           onMouseDown={(e) => e.preventDefault()}
-          className="sv-pop absolute left-0 right-0 top-10 z-40 max-h-[60vh] overflow-y-auto rounded-xl border border-line bg-elevated p-1.5 shadow-2xl"
+          className={`sv-pop z-40 max-h-[60vh] overflow-y-auto rounded-xl border border-line bg-elevated p-1.5 shadow-2xl ${
+            compact ? 'fixed left-2 right-2 top-[calc(3.25rem+var(--sv-safe-top,0px))]' : 'absolute left-0 right-0 top-10'
+          }`}
         >
           {!loading && results.length === 0 && <div className="px-3 py-6 text-center text-sm text-muted">No matches for “{q.trim()}”</div>}
           {results.map((r, i) => (

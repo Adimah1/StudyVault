@@ -1,5 +1,10 @@
 node_modules/
 dist/
+dist-mobile/
+tmp-samples/
+# Built mobile bundle copied into the Android project (contains the baked-in key)
+android/app/src/main/assets/public/
+android/app/src/main/assets/capacitor.config.json
 release/
 *.log
 .DS_Store
@@ -8,3 +13,6 @@ release/
 .env
 .env.*
 !.env.example
+
+# Local editor/agent config
+.claude/

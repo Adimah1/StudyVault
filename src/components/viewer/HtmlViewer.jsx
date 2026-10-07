@@ -58,7 +58,7 @@ export default function HtmlViewer({ kind, ext, html, text, term, onLayoutReady 
   return (
     <article
       ref={ref}
-      className={`sv-prose prose mx-auto px-10 py-12 ${ext === 'pptx' ? 'max-w-4xl' : 'max-w-3xl'} prose-headings:tracking-tight prose-img:rounded-lg`}
+      className={`sv-prose prose mx-auto px-4 py-6 sm:px-10 sm:py-12${ext === 'pptx' ? 'max-w-4xl' : 'max-w-3xl'} prose-headings:tracking-tight prose-img:rounded-lg`}
     >
       {empty ? (
         <p className="text-muted">This document has no readable text content.</p>
