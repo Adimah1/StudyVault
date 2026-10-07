@@ -2,7 +2,12 @@
 
 A desktop app (Windows / macOS / Linux) that turns a local folder of PDFs, PowerPoints, Word documents and text files into an interactive study environment. Files are **read in place** and never moved or modified.
 
-## Getting started
+## Download
+
+**Windows (64-bit):** get `StudyVault-Setup-0.1.0.exe` from the [latest release](https://github.com/Adimah1/StudyVault/releases/latest).
+If Windows shows "Windows protected your PC", click **More info → Run anyway** (the installer isn't code-signed yet).
+
+## Getting started (developers)
 
 Requirements: **Node.js 20+** (https://nodejs.org).
 
